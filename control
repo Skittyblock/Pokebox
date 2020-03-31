@@ -1,7 +1,7 @@
 Package: xyz.skitty.pokebox
 Name: Pokébox
 Depends: mobilesubstrate
-Version: 1.0
+Version: 1.0.1
 Architecture: iphoneos-arm
 Description: Pokémon style notifications!
 Icon: https://skitty.xyz/repo/icons/xyz.skitty.pokebox.png

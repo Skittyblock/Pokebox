@@ -11,6 +11,7 @@ static NSString *fontName;
 static NSMutableDictionary *settings;
 static BOOL previouslyEnabled;
 static BOOL enabled;
+static BOOL hideIcon;
 static BOOL animateText;
 
 static BOOL useCustomTitleSize;
@@ -78,6 +79,7 @@ static void refreshPrefs() {
 	previouslyEnabled = enabled;
 
 	enabled = [([settings objectForKey:@"enabled"] ?: @(YES)) boolValue];
+	hideIcon = [([settings objectForKey:@"hideIcon"] ?: @(NO)) boolValue];
 	animateText = [([settings objectForKey:@"animateText"] ?: @(YES)) boolValue];
 	location = [([settings objectForKey:@"location"] ?: @(0)) integerValue];
 	fontValue = [([settings objectForKey:@"font"] ?: @(2)) integerValue];
@@ -153,6 +155,15 @@ static void PreferencesChangedCallback(CFNotificationCenterRef center, void *obs
 	self.viewForPreview.otherHeaderView.dateLabel = [[UILabel alloc] initWithFrame:headerView.dateLabel.frame];
 	self.viewForPreview.otherHeaderView.dateLabel.attributedText = headerView.dateLabel.attributedText;
 	[self.viewForPreview.otherHeaderView addSubview:self.viewForPreview.otherHeaderView.dateLabel];
+
+	if (hideIcon) {
+		self.viewForPreview.otherHeaderView.iconButton.hidden = YES;
+		CGRect frame = self.viewForPreview.otherHeaderView.titleLabel.frame;
+		self.viewForPreview.otherHeaderView.titleLabel.frame = CGRectMake(-17, frame.origin.y, frame.size.width, frame.size.height);
+	} else {
+		self.viewForPreview.otherHeaderView.iconButton.hidden = NO;
+		self.viewForPreview.otherHeaderView.titleLabel.frame = headerView.titleLabel.frame;
+	}
 }
 
 - (void)viewDidLayoutSubviews {
@@ -187,6 +198,16 @@ static void PreferencesChangedCallback(CFNotificationCenterRef center, void *obs
 		((UIImageView *)[self.viewForPreview valueForKey:@"_shadowView"]).hidden = NO;
 		self.viewForPreview.backgroundView.hidden = NO;
 		self.backgroundImageView.hidden = YES;
+
+		if (hideIcon) {
+			self.viewForPreview.otherHeaderView.iconButton.hidden = YES;
+			CGRect frame = self.viewForPreview.otherHeaderView.titleLabel.frame;
+			self.viewForPreview.otherHeaderView.titleLabel.frame = CGRectMake(-17, frame.origin.y, frame.size.width, frame.size.height);
+		} else {
+			self.viewForPreview.otherHeaderView.iconButton.hidden = NO;
+			PLPlatterHeaderContentView *headerView = [self.viewForPreview valueForKey:@"_headerContentView"];
+			self.viewForPreview.otherHeaderView.titleLabel.frame = headerView.titleLabel.frame;
+		}
 	}
 }
 
@@ -363,6 +384,12 @@ static void PreferencesChangedCallback(CFNotificationCenterRef center, void *obs
 			[superview.otherHeaderView.iconButton setImage:self.iconButtons[0].imageView.image forState:UIControlStateNormal];
 
 			superview.otherHeaderView.titleLabel.frame = self.titleLabel.frame;
+			if (hideIcon) {
+				superview.otherHeaderView.iconButton.hidden = YES;
+				superview.otherHeaderView.titleLabel.frame = CGRectMake(-17, self.titleLabel.frame.origin.y, self.titleLabel.frame.size.width, self.titleLabel.frame.size.height);
+			} else {
+				superview.otherHeaderView.iconButton.hidden = NO;
+			}
 			superview.otherHeaderView.titleLabel.attributedText = self.titleLabel.attributedText;
 			superview.otherHeaderView.titleLabel.font = [self _titleLabelPreferredFont];
 			superview.otherHeaderView.titleLabel.layer.filters = self.titleLabel.layer.filters;

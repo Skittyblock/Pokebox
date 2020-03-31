@@ -247,6 +247,26 @@
 		<dict>
 			<key>cell</key>
 			<string>PSGroupCell</string>
+			<key>label</key>
+			<string>Other</string>
+		</dict>
+		<dict>
+			<key>cell</key>
+			<string>PSSwitchCell</string>
+			<key>default</key>
+			<false/>
+			<key>defaults</key>
+			<string>xyz.skitty.pokebox</string>
+			<key>PostNotification</key>
+			<string>xyz.skitty.pokebox.prefschanged</string>
+			<key>key</key>
+			<string>hideIcon</string>
+			<key>label</key>
+			<string>Hide Notification Icon</string>
+		</dict>
+		<dict>
+			<key>cell</key>
+			<string>PSGroupCell</string>
 		</dict>
 		<dict>
 			<key>cell</key>
