@@ -46,6 +46,7 @@
 
 @interface NCNotificationShortLookView : PLPlatterView
 @property (nonatomic, retain) UIView *backgroundView;
+@property (nonatomic, retain) UIView *backgroundMaterialView;
 @property (nonatomic, retain) PBHeaderView *otherHeaderView;
 @property (nonatomic, retain) NCNotificationContentView *notificationContentView;
 @property (nonatomic, assign) NSString *title;
@@ -90,6 +91,7 @@
 @property (nonatomic,readonly) PLClickPresentationInteractionManager * clickPresentationInteractionManager;                                                   //@synthesize scrollView=_scrollView - In the implementation block
 @property (getter=_presentedLongLookViewController,nonatomic,readonly) NCNotificationViewController * presentedLongLookViewController; 
 @property (nonatomic, retain) UIImageView *backgroundImageView;
+@property (nonatomic, retain) UIView *backgroundColorView;
 - (void)_presentLongLookForScrollAnimated:(BOOL)arg1 completion:(/*^block*/id)arg2 ;
 - (BOOL)_didScrollPresentLongLookViewController;
 @end

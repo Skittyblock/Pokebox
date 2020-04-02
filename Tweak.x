@@ -131,6 +131,7 @@ static void PreferencesChangedCallback(CFNotificationCenterRef center, void *obs
 %hook NCNotificationShortLookViewController
 
 %property (nonatomic, retain) UIImageView *backgroundImageView;
+%property (nonatomic, retain) UIView *backgroundColorView;
 
 - (void)viewDidLoad {
 	%orig;
@@ -164,23 +165,44 @@ static void PreferencesChangedCallback(CFNotificationCenterRef center, void *obs
 		self.viewForPreview.otherHeaderView.iconButton.hidden = NO;
 		self.viewForPreview.otherHeaderView.titleLabel.frame = headerView.titleLabel.frame;
 	}
+
+	// Load background image
+	if (!self.backgroundImageView) {
+		self.backgroundImageView = [[UIImageView alloc] initWithFrame:self.viewForPreview.backgroundView.bounds];
+		self.backgroundImageView.image = [[UIImage imageWithContentsOfFile:@"/Library/Application Support/Pokebox/Pokeballs-Border.png"] resizableImageWithCapInsets:UIEdgeInsetsMake(35, 100, 35, 100) resizingMode:UIImageResizingModeStretch];
+		self.backgroundImageView.hidden = YES;
+		[self.viewForPreview insertSubview:self.backgroundImageView atIndex:0];
+
+		self.backgroundColorView = [[UIView alloc] initWithFrame:CGRectMake(5, 5, self.backgroundImageView.bounds.size.width - 10, self.backgroundImageView.bounds.size.height - 10)];
+		self.backgroundColorView.backgroundColor = [UIColor whiteColor];
+		[self.viewForPreview insertSubview:self.backgroundColorView atIndex:0];
+
+		if (@available(iOS 13, *)) {
+			if (self.traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark) {
+				self.backgroundImageView.image = [[UIImage imageWithContentsOfFile:@"/Library/Application Support/Pokebox/Pokeballs-Dark-Border.png"] resizableImageWithCapInsets:UIEdgeInsetsMake(35, 100, 35, 100) resizingMode:UIImageResizingModeStretch];
+				self.backgroundColorView.backgroundColor = [UIColor colorWithRed:0.12 green:0.12 blue:0.12 alpha:1.00];
+			}
+		}
+	}
 }
 
 - (void)viewDidLayoutSubviews {
 	%orig;
-	if (!self.backgroundImageView) {
-		self.backgroundImageView = [[UIImageView alloc] initWithFrame:self.viewForPreview.backgroundView.bounds];
-		self.backgroundImageView.image = [[UIImage imageWithContentsOfFile:@"/Library/Application Support/Pokebox/Pokeballs.png"] resizableImageWithCapInsets:UIEdgeInsetsMake(35, 100, 35, 100) resizingMode:UIImageResizingModeStretch];
-		self.backgroundImageView.hidden = YES;
-		if (@available(iOS 13, *)) {
-			if (self.traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark) {
-				self.backgroundImageView.image = [[UIImage imageWithContentsOfFile:@"/Library/Application Support/Pokebox/Pokeballs-Dark.png"] resizableImageWithCapInsets:UIEdgeInsetsMake(35, 100, 35, 100) resizingMode:UIImageResizingModeStretch];
-			}
+
+	// ColorBanners support
+    if ([[NSFileManager defaultManager] fileExistsAtPath:@"/Library/MobileSubstrate/DynamicLibraries/ColorBanners3.dylib"]) {
+        for (UIView *view in self.self.viewForPreview.backgroundMaterialView.subviews) {
+            if ([[view class] isEqual:%c(CBR3GradientView)]) {
+				if (((CAGradientLayer *)view.layer).colors.count > 0) {
+					self.backgroundColorView.backgroundColor = [[UIColor alloc] initWithCGColor:(__bridge CGColorRef)(((CAGradientLayer *)view.layer).colors[0])] ?: [UIColor whiteColor];
+				}
+                break;
+            }
 		}
-		[self.viewForPreview insertSubview:self.backgroundImageView atIndex:0];
 	}
 
 	self.backgroundImageView.frame = self.viewForPreview.backgroundView.bounds;
+	self.backgroundColorView.frame = CGRectMake(5, 5, self.backgroundImageView.bounds.size.width - 10, self.backgroundImageView.bounds.size.height - 10);
 
 	if (enabled && (location == 0 || ([self.delegate isKindOfClass:%c(SBNotificationBannerDestination)] && location == 1) || (![self.delegate isKindOfClass:%c(SBNotificationBannerDestination)] && location == 2))) {
   		if ([[[UIDevice currentDevice] systemVersion] floatValue] < 13.0) {
@@ -262,7 +284,7 @@ static void PreferencesChangedCallback(CFNotificationCenterRef center, void *obs
 
 		// Text animation
 		if (enabled && animateText) {
-			NSString *newText = self.viewForPreview.originalSecondaryText;
+			NSString *newText = self.viewForPreview.originalSecondaryText ?: @"";
 			self.viewForPreview.secondaryText = [NSString stringWithFormat:@"%C", [newText characterAtIndex:0]];
 
 			NSMutableDictionary *dict = [NSMutableDictionary dictionary];
@@ -313,9 +335,11 @@ static void PreferencesChangedCallback(CFNotificationCenterRef center, void *obs
 	if (self.backgroundImageView) {
 		if (@available(iOS 13, *)) {
 			if (self.traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark) {
-				self.backgroundImageView.image = [[UIImage imageWithContentsOfFile:@"/Library/Application Support/Pokebox/Pokeballs-Dark.png"] resizableImageWithCapInsets:UIEdgeInsetsMake(35, 100, 35, 100) resizingMode:UIImageResizingModeStretch];
+				self.backgroundImageView.image = [[UIImage imageWithContentsOfFile:@"/Library/Application Support/Pokebox/Pokeballs-Dark-Border.png"] resizableImageWithCapInsets:UIEdgeInsetsMake(35, 100, 35, 100) resizingMode:UIImageResizingModeStretch];
+				self.backgroundColorView.backgroundColor = [UIColor colorWithRed:0.12 green:0.12 blue:0.12 alpha:1.00];
 			} else {
-				self.backgroundImageView.image = [[UIImage imageWithContentsOfFile:@"/Library/Application Support/Pokebox/Pokeballs.png"] resizableImageWithCapInsets:UIEdgeInsetsMake(35, 100, 35, 100) resizingMode:UIImageResizingModeStretch];
+				self.backgroundImageView.image = [[UIImage imageWithContentsOfFile:@"/Library/Application Support/Pokebox/Pokeballs-Border.png"] resizableImageWithCapInsets:UIEdgeInsetsMake(35, 100, 35, 100) resizingMode:UIImageResizingModeStretch];
+				self.backgroundColorView.backgroundColor = [UIColor whiteColor];
 			}
 		}
 	}
