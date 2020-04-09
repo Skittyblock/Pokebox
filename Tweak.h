@@ -24,6 +24,7 @@
 @interface PLPlatterView : UIView
 @property (nonatomic, assign) CGFloat cornerRadius;
 @property (nonatomic, strong) UIView *backgroundView;
+@property (nonatomic, retain) UIImageView *backgroundImageView;
 @end
 
 @interface BSUIEmojiLabelView : UIView
@@ -42,7 +43,6 @@
 @property (nonatomic, strong, readwrite) NSString *secondaryText; 
 @property (nonatomic, retain) UILabel *summaryLabelCopy;
 @end
-
 
 @interface PBHeaderView : UIView
 @property (nonatomic, retain) UIButton *iconButton;
@@ -64,7 +64,7 @@
 - (void)updateFrame;
 @end
 
-@interface NCNotificationViewControllerView
+@interface NCNotificationViewControllerView : UIView
 @property (nonatomic, strong) NCNotificationShortLookView *contentView;
 @end
 

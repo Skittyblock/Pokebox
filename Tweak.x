@@ -148,6 +148,8 @@ void refreshViews() {
 			[headerView _recycleDateLabel];
 			[headerView _configureDateLabel];
 			[view setNeedsLayout];
+		} else if ([view isKindOfClass:%c(NCNotificationViewControllerView)]) {
+			[view setNeedsLayout];
 		}
 	}
 }
@@ -351,7 +353,6 @@ static void PreferencesChangedCallback(CFNotificationCenterRef center, void *obs
 		}
 	}
 	%orig;
-
 }
 
 - (void)viewDidAppear:(BOOL)animated {
@@ -466,21 +467,95 @@ static void PreferencesChangedCallback(CFNotificationCenterRef center, void *obs
 %property (nonatomic, retain) UIView *otherHeaderView;
 %property (nonatomic, retain) NSString *originalSecondaryText;
 
+- (void)layoutSubviews {
+	%orig;
+	NCNotificationShortLookViewController *controller = (NCNotificationShortLookViewController *)[self _viewControllerForAncestor];
+	if (enabled && [controller.delegate isKindOfClass:%c(SBNotificationBannerDestination)] && location != 2) {
+		if ([[[UIDevice currentDevice] systemVersion] floatValue] < 13.0) {
+			((UIView *)[self valueForKey:@ "_mainOverlayView"]).hidden = YES;
+		}
+		((UIView *)[self valueForKey:@"_grabberView"]).hidden = YES;
+		((UIImageView *)[self valueForKey:@"_shadowView"]).hidden = YES;
+		self.backgroundView.hidden = YES;
+	}
+}
+
+%end
+
+// iOS 12 Stacked notifications
+%hook PLPlatterView
+%property (nonatomic, retain) UIImageView *backgroundImageView;
+%end
+
+%hook NCNotificationViewControllerView
+
+- (void)didMoveToSuperview {
+	%orig;
+	if (![viewsToLayout containsObject:self]) {
+		[viewsToLayout addObject:self];
+	}
+}
+
+- (void)layoutSubviews {
+	%orig;
+	for (PLPlatterView *view in self.subviews) {
+		if ([view isKindOfClass:%c(PLPlatterView)]) {
+			UIView *mainOverlayView = [view valueForKey:@"_mainOverlayView"];
+			if (!view.backgroundImageView) {
+				view.backgroundImageView = [[UIImageView alloc] initWithFrame:view.bounds];
+				view.backgroundImageView.hidden = YES;
+				[view addSubview:view.backgroundImageView];
+			}
+			view.backgroundImageView.frame = view.bounds;
+			if (style == 0 || style == 1) {
+				view.backgroundImageView.image = [[UIImage imageWithContentsOfFile:@"/Library/Application Support/Pokebox/Pokeballs.png"] resizableImageWithCapInsets:UIEdgeInsetsMake(35, 100, 35, 100) resizingMode:UIImageResizingModeStretch];
+			} else if (style == 2) {
+				view.backgroundImageView.image = [[UIImage imageWithContentsOfFile:@"/Library/Application Support/Pokebox/Pokeballs-Dark.png"] resizableImageWithCapInsets:UIEdgeInsetsMake(35, 100, 35, 100) resizingMode:UIImageResizingModeStretch];
+			}
+			BOOL addBackground = YES;
+			/*for (UIView *subview in view.subviews) {
+				if ([subview isKindOfClass:%c(UIImageView)]) {
+					addBackground = NO;
+				}
+			}*/
+			if (addBackground) {
+			}
+			if (enabled) {
+				mainOverlayView.hidden = YES;
+				view.backgroundView.hidden = YES;
+				view.backgroundImageView.hidden = NO;
+			} else {
+				mainOverlayView.hidden = NO;
+				view.backgroundView.hidden = NO;
+				view.backgroundImageView.hidden = YES;
+			}
+		}
+	}
+}
+
 %end
 
 // Notification header
 %hook PLPlatterHeaderContentView
 
+- (void)didMoveToSuperview {
+	%orig;
+	if (![viewsToLayout containsObject:self] && ![self isKindOfClass:%c(WGPlatterHeaderContentView)] && ![self.superview.superview isKindOfClass:%c(WGWidgetPlatterView)]) {
+		[viewsToLayout addObject:self];
+	}
+}
+
 // Adjust the replacement header view frame/text
 // I COULDN'T FIND ANY OTHER METHODS TO HOOK
 - (void)layoutSubviews {
 	%orig;
-	if (![viewsToLayout containsObject:self] && ![self isKindOfClass:%c(WGPlatterHeaderContentView)]) {
-		[viewsToLayout addObject:self];
-	}
-
+	NCNotificationShortLookView *superview;
 	if ([self.superview isKindOfClass:%c(NCNotificationShortLookView)]) {
-		NCNotificationShortLookView *superview = (NCNotificationShortLookView *)self.superview;
+		superview = (NCNotificationShortLookView *)self.superview;
+	} else if ([self.superview.superview isKindOfClass:%c(NCNotificationShortLookView)]) {
+		superview = (NCNotificationShortLookView *)self.superview.superview;
+	}
+	if (superview) {
 		NCNotificationShortLookViewController *controller = (NCNotificationShortLookViewController *)[superview _viewControllerForAncestor];
 		if (enabled && (location == 0 || ([controller.delegate isKindOfClass:%c(SBNotificationBannerDestination)] && location == 1) || (![controller.delegate isKindOfClass:%c(SBNotificationBannerDestination)] && location == 2))) {
 			superview.otherHeaderView.frame = CGRectMake(2, 4, self.frame.size.width - 4, self.frame.size.height);
@@ -538,7 +613,7 @@ static void PreferencesChangedCallback(CFNotificationCenterRef center, void *obs
 - (UIFont *)_titleLabelFont {
 	NCNotificationShortLookViewController *controller = (NCNotificationShortLookViewController *)[self _viewControllerForAncestor];
 	bool loc = (location == 0 || ([controller.delegate isKindOfClass:%c(SBNotificationBannerDestination)] && location == 1) || (![controller.delegate isKindOfClass:%c(SBNotificationBannerDestination)] && location == 2));
-	if (enabled && fontValue && ![self isKindOfClass:%c(WGPlatterHeaderContentView)] && loc) {
+	if (enabled && fontValue && ![self isKindOfClass:%c(WGPlatterHeaderContentView)] && ![self.superview.superview isKindOfClass:%c(WGWidgetPlatterView)] && loc) {
 		return [UIFont fontWithName:fontName size:titleSize];
 	}
 	return %orig;
@@ -547,7 +622,7 @@ static void PreferencesChangedCallback(CFNotificationCenterRef center, void *obs
 - (UIFont *)_titleLabelPreferredFont {
 	NCNotificationShortLookViewController *controller = (NCNotificationShortLookViewController *)[self _viewControllerForAncestor];
 	bool loc = (location == 0 || ([controller.delegate isKindOfClass:%c(SBNotificationBannerDestination)] && location == 1) || (![controller.delegate isKindOfClass:%c(SBNotificationBannerDestination)] && location == 2));
-	if (enabled && fontValue && ![self isKindOfClass:%c(WGPlatterHeaderContentView)] && loc) {
+	if (enabled && fontValue && ![self isKindOfClass:%c(WGPlatterHeaderContentView)] && ![self.superview.superview isKindOfClass:%c(WGWidgetPlatterView)] && loc) {
 		return [UIFont fontWithName:fontName size:titleSize];
 	}
 	return %orig;
