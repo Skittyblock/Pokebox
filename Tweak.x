@@ -133,12 +133,15 @@ void refreshViews() {
 				contentView.primarySubtitleLabel.font = [UIFont fontWithName:fontName size:textSize];
 				contentView.secondaryLabel.font = [UIFont fontWithName:fontName size:textSize];
 				contentView.summaryLabel.font = [UIFont fontWithName:fontName size:13];
+				contentView.summaryLabelCopy.font = [UIFont fontWithName:fontName size:13];
 			} else {
 				contentView.primaryLabel.font = [UIFont systemFontOfSize:textSize weight:UIFontWeightSemibold];
 				contentView.primarySubtitleLabel.font = [UIFont systemFontOfSize:textSize weight:UIFontWeightSemibold];
 				contentView.secondaryLabel.font = [UIFont systemFontOfSize:textSize];
 				contentView.summaryLabel.font = [UIFont systemFontOfSize:13];
+				contentView.summaryLabelCopy.font = [UIFont systemFontOfSize:13];
 			}
+			[view setNeedsLayout];
 		} else if ([view isKindOfClass:%c(PLPlatterHeaderContentView)]) {
 			PLPlatterHeaderContentView *headerView = (PLPlatterHeaderContentView *)view;
 			[headerView _configureTitleLabel:[headerView _titleLabel]];
@@ -585,6 +588,14 @@ static void PreferencesChangedCallback(CFNotificationCenterRef center, void *obs
 	%orig;
 
 	if (self.summaryLabelCopy) {
+		if (enabled) {
+			self.summaryLabel.hidden = YES;
+			self.summaryLabelCopy.hidden = NO;
+		} else {
+			self.summaryLabel.hidden = NO;
+			self.summaryLabelCopy.hidden = YES;
+		}
+
 		self.summaryLabelCopy.frame = self.summaryLabel.frame;
 		self.summaryLabelCopy.text = self.summaryLabel.text;
 
