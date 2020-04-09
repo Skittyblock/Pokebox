@@ -62,6 +62,34 @@
 		</dict>
 		<dict>
 			<key>cell</key>
+			<string>PSLinkListCell</string>
+			<key>detail</key>
+			<string>PSListItemsController</string>
+			<key>default</key>
+			<integer>0</integer>
+			<key>defaults</key>
+			<string>xyz.skitty.pokebox</string>
+			<key>PostNotification</key>
+			<string>xyz.skitty.pokebox.prefschanged</string>
+			<key>key</key>
+			<string>style</string>
+			<key>label</key>
+			<string>Style</string>
+			<key>validTitles</key>
+			<array>
+				<string>Default</string>
+				<string>Light</string>
+				<string>Dark</string>
+			</array>
+			<key>validValues</key>
+			<array>
+				<integer>0</integer>
+				<integer>1</integer>
+				<integer>2</integer>
+			</array>
+		</dict>
+		<dict>
+			<key>cell</key>
 			<string>PSGroupCell</string>
 			<key>label</key>
 			<string>Font</string>
@@ -193,7 +221,7 @@
 			<string>Banner Animation</string>
 			<key>validTitles</key>
 			<array>
-				<string>Default (top)</string>
+				<string>Top</string>
 				<string>Bottom</string>
 				<string>No animation (top)</string>
 				<string>No animation (bottom)</string>

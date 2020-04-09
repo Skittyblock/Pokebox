@@ -10,7 +10,7 @@
 @interface PLPlatterHeaderContentView : UIView
 @property (setter=_setFontProvider:, getter=_fontProvider, nonatomic, retain) BSUIFontProvider * fontProvider; 
 @property (getter=_titleLabel, nonatomic, readonly) UILabel *titleLabel; 
-@property (getter=_dateLabel, nonatomic, readonly) UILabel *dateLabel;                                                                                                                                     //@synthesize dateFormatStyle=_dateFormatStyle - In the implementation block
+@property (getter=_dateLabel, nonatomic, readonly) UILabel *dateLabel;
 @property (nonatomic,readonly) NSArray<UIButton *> *iconButtons;
 - (void)_configureTitleLabel:(id)titleLabel;
 - (void)_configureDateLabel;
@@ -26,7 +26,12 @@
 @property (nonatomic, strong) UIView *backgroundView;
 @end
 
-@interface BSUIEmojiLabelView : UILabel
+@interface BSUIEmojiLabelView : UIView
+@property (nonatomic, retain) UILabel *contentLabel;
+@property (nonatomic, assign) UIFont *font;
+@property (nonatomic, assign) UIColor *textColor;
+@property (nonatomic, assign) NSString *text;
+- (void)enableDarkMode:(BOOL)enable;
 @end
 
 @interface NCNotificationContentView : UIView
@@ -35,6 +40,7 @@
 @property (getter=_secondaryLabel, nonatomic, readonly) UILabel *secondaryLabel;
 @property (setter=_setSummaryLabel:, getter=_summaryLabel, nonatomic, retain) BSUIEmojiLabelView *summaryLabel;
 @property (nonatomic, strong, readwrite) NSString *secondaryText; 
+@property (nonatomic, retain) UILabel *summaryLabelCopy;
 @end
 
 
@@ -94,4 +100,18 @@
 @property (nonatomic, retain) UIView *backgroundColorView;
 - (void)_presentLongLookForScrollAnimated:(BOOL)arg1 completion:(/*^block*/id)arg2 ;
 - (BOOL)_didScrollPresentLongLookViewController;
+@end
+
+@interface CAFilter : NSObject
++ (CAFilter*)filterWithType:(NSString*)type;
++ (CAFilter*)filterWithName:(NSString*)name;
+- (id)initWithType:(NSString*)type;
+- (id)initWithName:(NSString*)name;
+- (void)setDefaults;
+@end
+
+@interface UILabel (Pokebox)
+@property (nonatomic, assign) BOOL lightModeEnabled;
+@property (nonatomic, assign) BOOL darkModeEnabled;
+- (void)enableDarkMode:(BOOL)enable;
 @end

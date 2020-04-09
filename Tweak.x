@@ -22,42 +22,124 @@ static int textSize;
 static CGFloat animationSpeed;
 
 static int location;
+static int style;
 static int fontValue;
 static int bannerAnimation;
 
 static NSMutableArray *viewsToLayout;
+
+// Update notification banner style
+void updateBannerStyle(NCNotificationShortLookViewController *controller) {
+	// ColorBanners support
+	BOOL colorBanners = NO;
+
+	if ([[NSFileManager defaultManager] fileExistsAtPath:@"/Library/MobileSubstrate/DynamicLibraries/ColorBanners3.dylib"]) {
+		for (UIView *sview in controller.viewForPreview.backgroundMaterialView.subviews) {
+			if ([[sview class] isEqual:%c(CBR3GradientView)]) {
+				if (((CAGradientLayer *)sview.layer).colors.count > 0) {
+					controller.backgroundColorView.backgroundColor = [[UIColor alloc] initWithCGColor:(__bridge CGColorRef)(((CAGradientLayer *)sview.layer).colors[0])] ?: [UIColor whiteColor];
+					colorBanners = YES;
+				}
+				break;
+			}
+		}
+	}
+
+	// Banner style
+	BOOL darkMode = NO;
+
+	if (@available(iOS 13, *)) {
+		if (controller.traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark && (style == 0 || style == 2)) {
+			darkMode = YES;
+		}
+	}
+	if (style == 2) {
+		darkMode = YES;
+	}
+
+	PLPlatterHeaderContentView *headerView = [controller.viewForPreview valueForKey:@"_headerContentView"];
+	NCNotificationContentView *contentView = [controller.viewForPreview valueForKey:@"_notificationContentView"];
+
+	if (!colorBanners) {
+		[controller.viewForPreview.otherHeaderView.titleLabel enableDarkMode:darkMode];
+		[controller.viewForPreview.otherHeaderView.dateLabel enableDarkMode:darkMode];
+
+		[contentView.primaryLabel enableDarkMode:darkMode];
+		[contentView.primarySubtitleLabel enableDarkMode:darkMode];
+		[contentView.secondaryLabel enableDarkMode:darkMode];
+		[contentView.summaryLabelCopy enableDarkMode:darkMode];
+
+		if (darkMode) {
+			controller.backgroundColorView.backgroundColor = [UIColor colorWithRed:0.12 green:0.12 blue:0.12 alpha:1.00];
+		} else {
+			controller.backgroundColorView.backgroundColor = [UIColor whiteColor];
+		}
+	} else {
+		// This is kinda dumb ngl. I need a better system.
+		controller.viewForPreview.otherHeaderView.titleLabel.darkModeEnabled = NO;
+		controller.viewForPreview.otherHeaderView.titleLabel.lightModeEnabled = NO;
+		controller.viewForPreview.otherHeaderView.dateLabel.darkModeEnabled = NO;
+		controller.viewForPreview.otherHeaderView.dateLabel.lightModeEnabled = NO;
+		contentView.primaryLabel.darkModeEnabled = NO;
+		contentView.primaryLabel.lightModeEnabled = NO;
+		contentView.primarySubtitleLabel.darkModeEnabled = NO;
+		contentView.primarySubtitleLabel.lightModeEnabled = NO;
+		contentView.secondaryLabel.darkModeEnabled = NO;
+		contentView.secondaryLabel.lightModeEnabled = NO;
+		contentView.summaryLabelCopy.darkModeEnabled = NO;
+		contentView.summaryLabelCopy.lightModeEnabled = NO;
+
+		controller.viewForPreview.otherHeaderView.titleLabel.layer.filters = headerView.titleLabel.layer.filters;
+		controller.viewForPreview.otherHeaderView.dateLabel.layer.filters = headerView.dateLabel.layer.filters;
+		contentView.summaryLabelCopy.layer.filters = contentView.summaryLabel.layer.filters;
+
+		controller.viewForPreview.otherHeaderView.titleLabel.textColor = headerView.titleLabel.textColor;
+		controller.viewForPreview.otherHeaderView.dateLabel.textColor = headerView.dateLabel.textColor;
+		contentView.summaryLabelCopy.textColor = contentView.summaryLabel.textColor;
+	}
+
+	if (darkMode) {
+		controller.backgroundImageView.image = [[UIImage imageWithContentsOfFile:@"/Library/Application Support/Pokebox/Pokeballs-Dark-Border.png"] resizableImageWithCapInsets:UIEdgeInsetsMake(35, 100, 35, 100) resizingMode:UIImageResizingModeStretch];
+	} else {	
+		controller.backgroundImageView.image = [[UIImage imageWithContentsOfFile:@"/Library/Application Support/Pokebox/Pokeballs-Border.png"] resizableImageWithCapInsets:UIEdgeInsetsMake(35, 100, 35, 100) resizingMode:UIImageResizingModeStretch];
+	}
+}
 
 // Refresh views instead of respringing
 // If you have a better idea of how to do this, let me know. Please.
 void refreshViews() {
 	for (UIView *view in viewsToLayout) {
 		if ([view isKindOfClass:%c(NCNotificationShortLookViewController)]) {
-			if (enabled && (location == 0 || ([((NCNotificationShortLookViewController *)view).delegate isKindOfClass:%c(SBNotificationBannerDestination)] && location == 1) || (![((NCNotificationShortLookViewController *)view).delegate isKindOfClass:%c(SBNotificationBannerDestination)] && location == 2))) {
-				((UIImageView *)[((NCNotificationShortLookViewController *)view).viewForPreview valueForKey:@"_shadowView"]).hidden = YES;
-				((NCNotificationShortLookViewController *)view).viewForPreview.backgroundView.hidden = YES;
-				((NCNotificationShortLookViewController *)view).backgroundImageView.hidden = NO;
+			NCNotificationShortLookViewController *controller = (NCNotificationShortLookViewController *)view;
+			if (enabled && (location == 0 || ([controller.delegate isKindOfClass:%c(SBNotificationBannerDestination)] && location == 1) || (![controller.delegate isKindOfClass:%c(SBNotificationBannerDestination)] && location == 2))) {
+				((UIImageView *)[controller.viewForPreview valueForKey:@"_shadowView"]).hidden = YES;
+				controller.viewForPreview.backgroundView.hidden = YES;
+				controller.backgroundImageView.hidden = NO;
 			} else {
-				((UIImageView *)[((NCNotificationShortLookViewController *)view).viewForPreview valueForKey:@"_shadowView"]).hidden = NO;
-				((NCNotificationShortLookViewController *)view).viewForPreview.backgroundView.hidden = NO;
-				((NCNotificationShortLookViewController *)view).backgroundImageView.hidden = YES;
+				((UIImageView *)[controller.viewForPreview valueForKey:@"_shadowView"]).hidden = NO;
+				controller.viewForPreview.backgroundView.hidden = NO;
+				controller.backgroundImageView.hidden = YES;
 			}
+			updateBannerStyle(controller);
 		} else if ([view isKindOfClass:%c(NCNotificationContentView)]) {
+			NCNotificationContentView *contentView = (NCNotificationContentView *)view;
 			NCNotificationShortLookViewController *controller = (NCNotificationShortLookViewController *)[view _viewControllerForAncestor];
 			if (fontValue && enabled && (location == 0 || ([controller.delegate isKindOfClass:%c(SBNotificationBannerDestination)] && location == 1) || (![controller.delegate isKindOfClass:%c(SBNotificationBannerDestination)] && location == 2))) {
-				((NCNotificationContentView *)view).primaryLabel.font = [UIFont fontWithName:fontName size:textSize];
-				((NCNotificationContentView *)view).primarySubtitleLabel.font = [UIFont fontWithName:fontName size:textSize];
-				((NCNotificationContentView *)view).secondaryLabel.font = [UIFont fontWithName:fontName size:textSize];
-				((NCNotificationContentView *)view).summaryLabel.font = [UIFont fontWithName:fontName size:13];
+				contentView.primaryLabel.font = [UIFont fontWithName:fontName size:textSize];
+				contentView.primarySubtitleLabel.font = [UIFont fontWithName:fontName size:textSize];
+				contentView.secondaryLabel.font = [UIFont fontWithName:fontName size:textSize];
+				contentView.summaryLabel.font = [UIFont fontWithName:fontName size:13];
 			} else {
-				((NCNotificationContentView *)view).primaryLabel.font = [UIFont systemFontOfSize:textSize weight:UIFontWeightSemibold];
-				((NCNotificationContentView *)view).primarySubtitleLabel.font = [UIFont systemFontOfSize:textSize weight:UIFontWeightSemibold];
-				((NCNotificationContentView *)view).secondaryLabel.font = [UIFont systemFontOfSize:textSize];
-				((NCNotificationContentView *)view).summaryLabel.font = [UIFont systemFontOfSize:13];
+				contentView.primaryLabel.font = [UIFont systemFontOfSize:textSize weight:UIFontWeightSemibold];
+				contentView.primarySubtitleLabel.font = [UIFont systemFontOfSize:textSize weight:UIFontWeightSemibold];
+				contentView.secondaryLabel.font = [UIFont systemFontOfSize:textSize];
+				contentView.summaryLabel.font = [UIFont systemFontOfSize:13];
 			}
 		} else if ([view isKindOfClass:%c(PLPlatterHeaderContentView)]) {
-			[((PLPlatterHeaderContentView *)view) _configureTitleLabel:[(PLPlatterHeaderContentView *)view _titleLabel]];
-			[((PLPlatterHeaderContentView *)view) _recycleDateLabel];
-			[((PLPlatterHeaderContentView *)view) _configureDateLabel];
+			PLPlatterHeaderContentView *headerView = (PLPlatterHeaderContentView *)view;
+			[headerView _configureTitleLabel:[headerView _titleLabel]];
+			[headerView _recycleDateLabel];
+			[headerView _configureDateLabel];
 			[view setNeedsLayout];
 		}
 	}
@@ -81,7 +163,9 @@ static void refreshPrefs() {
 	enabled = [([settings objectForKey:@"enabled"] ?: @(YES)) boolValue];
 	hideIcon = [([settings objectForKey:@"hideIcon"] ?: @(NO)) boolValue];
 	animateText = [([settings objectForKey:@"animateText"] ?: @(YES)) boolValue];
+
 	location = [([settings objectForKey:@"location"] ?: @(0)) integerValue];
+	style = [([settings objectForKey:@"style"] ?: @(0)) integerValue];
 	fontValue = [([settings objectForKey:@"font"] ?: @(2)) integerValue];
 	animationSpeed = [([settings objectForKey:@"animationSpeed"] ?: @(0.1)) floatValue];
 	bannerAnimation = [([settings objectForKey:@"bannerAnimation"] ?: @(0)) integerValue];
@@ -150,11 +234,23 @@ static void PreferencesChangedCallback(CFNotificationCenterRef center, void *obs
 	[self.viewForPreview.otherHeaderView addSubview:self.viewForPreview.otherHeaderView.iconButton];
 
 	self.viewForPreview.otherHeaderView.titleLabel = [[UILabel alloc] initWithFrame:headerView.titleLabel.frame];
-	self.viewForPreview.otherHeaderView.titleLabel.attributedText = headerView.titleLabel.attributedText;
+
+	//self.viewForPreview.otherHeaderView.titleLabel.text = [headerView.titleLabel.attributedText string];
+	NSMutableAttributedString *titleText = [[NSMutableAttributedString alloc] initWithString:headerView.titleLabel.attributedText.string];
+	NSDictionary *attrs = [headerView.titleLabel.attributedText attributesAtIndex:0 longestEffectiveRange:nil inRange:NSMakeRange(0, headerView.titleLabel.attributedText.length)];;
+	if ([attrs objectForKey:@"NSParagraphStyle"]) {
+		[titleText addAttribute:NSParagraphStyleAttributeName value:[attrs objectForKey:@"NSParagraphStyle"] range:NSMakeRange(0, titleText.length)];
+	} else {
+		titleText = [[NSMutableAttributedString alloc] initWithString:attrs.description];
+	}
+	self.viewForPreview.otherHeaderView.titleLabel.attributedText = titleText;
+
+	//self.viewForPreview.otherHeaderView.titleLabel.layer.filters = headerView.titleLabel.layer.filters;
 	[self.viewForPreview.otherHeaderView addSubview:self.viewForPreview.otherHeaderView.titleLabel];
 
 	self.viewForPreview.otherHeaderView.dateLabel = [[UILabel alloc] initWithFrame:headerView.dateLabel.frame];
 	self.viewForPreview.otherHeaderView.dateLabel.attributedText = headerView.dateLabel.attributedText;
+	self.viewForPreview.otherHeaderView.dateLabel.layer.filters = headerView.dateLabel.layer.filters;
 	[self.viewForPreview.otherHeaderView addSubview:self.viewForPreview.otherHeaderView.dateLabel];
 
 	if (hideIcon) {
@@ -165,6 +261,10 @@ static void PreferencesChangedCallback(CFNotificationCenterRef center, void *obs
 		self.viewForPreview.otherHeaderView.iconButton.hidden = NO;
 		self.viewForPreview.otherHeaderView.titleLabel.frame = headerView.titleLabel.frame;
 	}
+}
+
+- (void)viewDidLayoutSubviews {
+	%orig;
 
 	// Load background image
 	if (!self.backgroundImageView) {
@@ -177,28 +277,7 @@ static void PreferencesChangedCallback(CFNotificationCenterRef center, void *obs
 		self.backgroundColorView.backgroundColor = [UIColor whiteColor];
 		[self.viewForPreview insertSubview:self.backgroundColorView atIndex:0];
 
-		if (@available(iOS 13, *)) {
-			if (self.traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark) {
-				self.backgroundImageView.image = [[UIImage imageWithContentsOfFile:@"/Library/Application Support/Pokebox/Pokeballs-Dark-Border.png"] resizableImageWithCapInsets:UIEdgeInsetsMake(35, 100, 35, 100) resizingMode:UIImageResizingModeStretch];
-				self.backgroundColorView.backgroundColor = [UIColor colorWithRed:0.12 green:0.12 blue:0.12 alpha:1.00];
-			}
-		}
-	}
-}
-
-- (void)viewDidLayoutSubviews {
-	%orig;
-
-	// ColorBanners support
-    if ([[NSFileManager defaultManager] fileExistsAtPath:@"/Library/MobileSubstrate/DynamicLibraries/ColorBanners3.dylib"]) {
-        for (UIView *view in self.self.viewForPreview.backgroundMaterialView.subviews) {
-            if ([[view class] isEqual:%c(CBR3GradientView)]) {
-				if (((CAGradientLayer *)view.layer).colors.count > 0) {
-					self.backgroundColorView.backgroundColor = [[UIColor alloc] initWithCGColor:(__bridge CGColorRef)(((CAGradientLayer *)view.layer).colors[0])] ?: [UIColor whiteColor];
-				}
-                break;
-            }
-		}
+		updateBannerStyle(self);
 	}
 
 	self.backgroundImageView.frame = self.viewForPreview.backgroundView.bounds;
@@ -212,7 +291,7 @@ static void PreferencesChangedCallback(CFNotificationCenterRef center, void *obs
 		((UIImageView *)[self.viewForPreview valueForKey:@"_shadowView"]).hidden = YES;
 		self.viewForPreview.backgroundView.hidden = YES;
 		self.backgroundImageView.hidden = NO;
-	} else { // This might mess up some tweaks if they also make these hidden
+	} else { // This might mess up some tweaks if they hide these
   		if ([[[UIDevice currentDevice] systemVersion] floatValue] < 13.0) {
 			((UIView *)[self.viewForPreview valueForKey:@ "_mainOverlayView"]).hidden = NO;
 		}
@@ -332,16 +411,8 @@ static void PreferencesChangedCallback(CFNotificationCenterRef center, void *obs
 // Dark mode support
 - (void)traitCollectionDidChange:(UITraitCollection *)previousTraitCollection {
 	%orig;
-	if (self.backgroundImageView) {
-		if (@available(iOS 13, *)) {
-			if (self.traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark) {
-				self.backgroundImageView.image = [[UIImage imageWithContentsOfFile:@"/Library/Application Support/Pokebox/Pokeballs-Dark-Border.png"] resizableImageWithCapInsets:UIEdgeInsetsMake(35, 100, 35, 100) resizingMode:UIImageResizingModeStretch];
-				self.backgroundColorView.backgroundColor = [UIColor colorWithRed:0.12 green:0.12 blue:0.12 alpha:1.00];
-			} else {
-				self.backgroundImageView.image = [[UIImage imageWithContentsOfFile:@"/Library/Application Support/Pokebox/Pokeballs-Border.png"] resizableImageWithCapInsets:UIEdgeInsetsMake(35, 100, 35, 100) resizingMode:UIImageResizingModeStretch];
-				self.backgroundColorView.backgroundColor = [UIColor whiteColor];
-			}
-		}
+	if (self.backgroundImageView && self.backgroundColorView) {
+		updateBannerStyle(self);
 	}
 }
 
@@ -402,26 +473,45 @@ static void PreferencesChangedCallback(CFNotificationCenterRef center, void *obs
 		if (enabled && (location == 0 || ([controller.delegate isKindOfClass:%c(SBNotificationBannerDestination)] && location == 1) || (![controller.delegate isKindOfClass:%c(SBNotificationBannerDestination)] && location == 2))) {
 			superview.otherHeaderView.frame = CGRectMake(2, 4, self.frame.size.width - 4, self.frame.size.height);
 			superview.otherHeaderView.backgroundColor = [UIColor clearColor];
-			//superview.otherHeaderView.transform = CGAffineTransformMakeTranslation(0, 5);
 
 			superview.otherHeaderView.iconButton.frame = self.iconButtons[0].frame;
 			[superview.otherHeaderView.iconButton setImage:self.iconButtons[0].imageView.image forState:UIControlStateNormal];
 
 			superview.otherHeaderView.titleLabel.frame = self.titleLabel.frame;
+			superview.otherHeaderView.titleLabel.font = [self _titleLabelPreferredFont];
+
+			// Hide header icon option
 			if (hideIcon) {
 				superview.otherHeaderView.iconButton.hidden = YES;
 				superview.otherHeaderView.titleLabel.frame = CGRectMake(-17, self.titleLabel.frame.origin.y, self.titleLabel.frame.size.width, self.titleLabel.frame.size.height);
 			} else {
 				superview.otherHeaderView.iconButton.hidden = NO;
 			}
-			superview.otherHeaderView.titleLabel.attributedText = self.titleLabel.attributedText;
-			superview.otherHeaderView.titleLabel.font = [self _titleLabelPreferredFont];
-			superview.otherHeaderView.titleLabel.layer.filters = self.titleLabel.layer.filters;
+
+			// Funky attributed string stuff -- this is necessary because we want the text indent but NOT the color override on the title.
+			NSMutableAttributedString *titleText = [[NSMutableAttributedString alloc] initWithString:self.titleLabel.attributedText.string];
+			NSDictionary *attrs = [self.titleLabel.attributedText attributesAtIndex:0 longestEffectiveRange:nil inRange:NSMakeRange(0, self.titleLabel.attributedText.length)];;
+			if ([attrs objectForKey:@"NSParagraphStyle"]) {
+				[titleText addAttribute:NSParagraphStyleAttributeName value:[attrs objectForKey:@"NSParagraphStyle"] range:NSMakeRange(0, titleText.length)];
+			} else {
+				titleText = [[NSMutableAttributedString alloc] initWithString:attrs.description];
+			}
+			superview.otherHeaderView.titleLabel.attributedText = titleText;
 
 			superview.otherHeaderView.dateLabel.frame = self.dateLabel.frame;
-			superview.otherHeaderView.dateLabel.attributedText = self.dateLabel.attributedText;
+			superview.otherHeaderView.dateLabel.text = self.dateLabel.text;
 			superview.otherHeaderView.dateLabel.font = [self _dateLabelPreferredFont];
-			superview.otherHeaderView.dateLabel.layer.filters = self.dateLabel.layer.filters;
+
+			// Override style fix
+			if (style == 1 || style == 2) {
+				superview.otherHeaderView.titleLabel.layer.filters = nil;
+				superview.otherHeaderView.dateLabel.layer.filters = nil;
+			} else {
+				superview.otherHeaderView.titleLabel.layer.filters = self.titleLabel.layer.filters;
+				superview.otherHeaderView.dateLabel.layer.filters = self.dateLabel.layer.filters;
+			}
+			NCNotificationContentView *contentView = [superview valueForKey:@"_notificationContentView"];
+			[contentView setNeedsLayout];
 
 			superview.otherHeaderView.hidden = NO;
 			self.hidden = YES;
@@ -473,11 +563,28 @@ static void PreferencesChangedCallback(CFNotificationCenterRef center, void *obs
 
 // Notification content
 %hook NCNotificationContentView
+%property (nonatomic, retain) UILabel *summaryLabelCopy;
 
 - (void)didMoveToSuperview {
 	%orig;
 	if (![viewsToLayout containsObject:self] && ![self isKindOfClass:%c(WGPlatterHeaderContentView)]) {
 		[viewsToLayout addObject:self];
+	}
+}
+
+- (void)layoutSubviews {
+	%orig;
+
+	if (self.summaryLabelCopy) {
+		self.summaryLabelCopy.frame = self.summaryLabel.frame;
+		self.summaryLabelCopy.text = self.summaryLabel.text;
+
+		// Override style fix
+		if (style == 1 || style == 2) {
+			self.summaryLabelCopy.layer.filters = nil;
+		} else {
+			self.summaryLabelCopy.layer.filters = self.summaryLabel.contentLabel.layer.filters;
+		}
 	}
 }
 
@@ -511,13 +618,52 @@ static void PreferencesChangedCallback(CFNotificationCenterRef center, void *obs
 
 - (void)setSummaryText:(NSString *)summaryText {
 	%orig;
+	if (!self.summaryLabelCopy) {
+		self.summaryLabelCopy = [[UILabel alloc] initWithFrame:self.summaryLabel.frame];
+		[self.summaryLabel.superview addSubview:self.summaryLabelCopy];
+	}
+	self.summaryLabelCopy.text = self.summaryLabel.text;
+	self.summaryLabelCopy.layer.filters = self.summaryLabel.contentLabel.layer.filters;
+
+	self.summaryLabel.hidden = YES;
+	self.summaryLabelCopy.hidden = NO;
+
 	NCNotificationShortLookViewController *controller = (NCNotificationShortLookViewController *)[self _viewControllerForAncestor];
 	bool loc = (location == 0 || ([controller.delegate isKindOfClass:%c(SBNotificationBannerDestination)] && location == 1) || (![controller.delegate isKindOfClass:%c(SBNotificationBannerDestination)] && location == 2));
 	if (enabled && fontValue && loc) {
 		self.summaryLabel.font = [UIFont fontWithName:fontName size:13];
+		self.summaryLabelCopy.font = [UIFont fontWithName:fontName size:13];
 	}
 }
 
+%end
+
+// Hook UILabel and BSUIEmojiLabelView to add support for dark mode on labels
+%hook UILabel
+%property (nonatomic, assign) BOOL lightModeEnabled;
+%property (nonatomic, assign) BOOL darkModeEnabled;
+
+- (void)setTextColor:(UIColor *)textColor {
+	if ((style == 1 || style == 2) && (self.darkModeEnabled || self.lightModeEnabled)) {
+		return %orig(self.darkModeEnabled ? [UIColor whiteColor] : [UIColor blackColor]);
+	}
+	%orig;
+}
+
+%new
+- (void)enableDarkMode:(BOOL)enable {
+	self.lightModeEnabled = !enable;
+	self.darkModeEnabled = enable;
+	self.textColor = enable ? [UIColor whiteColor] : [UIColor blackColor];
+}
+
+%end
+
+%hook BSUIEmojiLabelView
+%new
+- (void)enableDarkMode:(BOOL)enable {
+	self.textColor = enable ? [UIColor whiteColor] : [UIColor blackColor];
+}
 %end
 
 %ctor {
