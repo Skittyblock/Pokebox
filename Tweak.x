@@ -33,9 +33,9 @@ void updateBannerStyle(NCNotificationShortLookViewController *controller) {
 	// ColorBanners/ColorMeNotifs support
 	BOOL colorBanners = NO;
 
-	if ([[NSFileManager defaultManager] fileExistsAtPath:@"/Library/MobileSubstrate/DynamicLibraries/ColorBanners3.dylib"]) {
+	if ([[NSFileManager defaultManager] fileExistsAtPath:@"/Library/MobileSubstrate/DynamicLibraries/ColorBanners3.dylib"] || [[NSFileManager defaultManager] fileExistsAtPath:@"/Library/MobileSubstrate/DynamicLibraries/ColorBanners2.dylib"]) {
 		for (UIView *sview in controller.viewForPreview.backgroundMaterialView.subviews) {
-			if ([[sview class] isEqual:%c(CBR3GradientView)]) {
+			if ([[sview class] isEqual:%c(CBR3GradientView)] || [[sview class] isEqual:%c(CBRGradientView)]) {
 				if (((CAGradientLayer *)sview.layer).colors.count > 0) {
 					controller.backgroundColorView.backgroundColor = [[UIColor alloc] initWithCGColor:(__bridge CGColorRef)(((CAGradientLayer *)sview.layer).colors[0])] ?: [UIColor whiteColor];
 					colorBanners = YES;
