@@ -115,31 +115,35 @@ void refreshViews() {
 	for (UIView *view in viewsToLayout) {
 		if ([view isKindOfClass:%c(NCNotificationShortLookViewController)]) {
 			NCNotificationShortLookViewController *controller = (NCNotificationShortLookViewController *)view;
-			if (enabled && (location == 0 || ([controller.delegate isKindOfClass:%c(SBNotificationBannerDestination)] && location == 1) || (![controller.delegate isKindOfClass:%c(SBNotificationBannerDestination)] && location == 2))) {
-				((UIImageView *)[controller.viewForPreview valueForKey:@"_shadowView"]).hidden = YES;
-				controller.viewForPreview.backgroundView.hidden = YES;
-				controller.backgroundImageView.hidden = NO;
-			} else {
-				((UIImageView *)[controller.viewForPreview valueForKey:@"_shadowView"]).hidden = NO;
-				controller.viewForPreview.backgroundView.hidden = NO;
-				controller.backgroundImageView.hidden = YES;
+			if ([controller respondsToSelector:@selector(delegate)]) {
+				if (enabled && (location == 0 || ([controller.delegate isKindOfClass:%c(SBNotificationBannerDestination)] && location == 1) || (![controller.delegate isKindOfClass:%c(SBNotificationBannerDestination)] && location == 2))) {
+					((UIImageView *)[controller.viewForPreview valueForKey:@"_shadowView"]).hidden = YES;
+					controller.viewForPreview.backgroundView.hidden = YES;
+					controller.backgroundImageView.hidden = NO;
+				} else {
+					((UIImageView *)[controller.viewForPreview valueForKey:@"_shadowView"]).hidden = NO;
+					controller.viewForPreview.backgroundView.hidden = NO;
+					controller.backgroundImageView.hidden = YES;
+				}
+				updateBannerStyle(controller);
 			}
-			updateBannerStyle(controller);
 		} else if ([view isKindOfClass:%c(NCNotificationContentView)]) {
 			NCNotificationContentView *contentView = (NCNotificationContentView *)view;
 			NCNotificationShortLookViewController *controller = (NCNotificationShortLookViewController *)[view _viewControllerForAncestor];
-			if (fontValue && enabled && (location == 0 || ([controller.delegate isKindOfClass:%c(SBNotificationBannerDestination)] && location == 1) || (![controller.delegate isKindOfClass:%c(SBNotificationBannerDestination)] && location == 2))) {
-				contentView.primaryLabel.font = [UIFont fontWithName:fontName size:textSize];
-				contentView.primarySubtitleLabel.font = [UIFont fontWithName:fontName size:textSize];
-				contentView.secondaryLabel.font = [UIFont fontWithName:fontName size:textSize];
-				contentView.summaryLabel.font = [UIFont fontWithName:fontName size:13];
-				contentView.summaryLabelCopy.font = [UIFont fontWithName:fontName size:13];
-			} else {
-				contentView.primaryLabel.font = [UIFont systemFontOfSize:textSize weight:UIFontWeightSemibold];
-				contentView.primarySubtitleLabel.font = [UIFont systemFontOfSize:textSize weight:UIFontWeightSemibold];
-				contentView.secondaryLabel.font = [UIFont systemFontOfSize:textSize];
-				contentView.summaryLabel.font = [UIFont systemFontOfSize:13];
-				contentView.summaryLabelCopy.font = [UIFont systemFontOfSize:13];
+			if ([controller respondsToSelector:@selector(delegate)]) {
+				if (fontValue && enabled && (location == 0 || ([controller.delegate isKindOfClass:%c(SBNotificationBannerDestination)] && location == 1) || (![controller.delegate isKindOfClass:%c(SBNotificationBannerDestination)] && location == 2))) {
+					contentView.primaryLabel.font = [UIFont fontWithName:fontName size:textSize];
+					contentView.primarySubtitleLabel.font = [UIFont fontWithName:fontName size:textSize];
+					contentView.secondaryLabel.font = [UIFont fontWithName:fontName size:textSize];
+					contentView.summaryLabel.font = [UIFont fontWithName:fontName size:13];
+					contentView.summaryLabelCopy.font = [UIFont fontWithName:fontName size:13];
+				} else {
+					contentView.primaryLabel.font = [UIFont systemFontOfSize:textSize weight:UIFontWeightSemibold];
+					contentView.primarySubtitleLabel.font = [UIFont systemFontOfSize:textSize weight:UIFontWeightSemibold];
+					contentView.secondaryLabel.font = [UIFont systemFontOfSize:textSize];
+					contentView.summaryLabel.font = [UIFont systemFontOfSize:13];
+					contentView.summaryLabelCopy.font = [UIFont systemFontOfSize:13];
+				}
 			}
 			[view setNeedsLayout];
 		} else if ([view isKindOfClass:%c(PLPlatterHeaderContentView)]) {
@@ -222,9 +226,9 @@ static void PreferencesChangedCallback(CFNotificationCenterRef center, void *obs
 
 // Hooks
 %hook NCNotificationShortLookViewController
-
 %property (nonatomic, retain) UIImageView *backgroundImageView;
 %property (nonatomic, retain) UIView *backgroundColorView;
+%property (nonatomic, assign) BOOL stopAnimating;
 
 - (void)viewDidLoad {
 	%orig;
@@ -410,9 +414,10 @@ static void PreferencesChangedCallback(CFNotificationCenterRef center, void *obs
 
 // Apparently implementing this myself fixes a rotation bug with the long look presentation
 - (void)scrollViewDidScroll:(UIScrollView *)scrollView {
-	if (enabled && (bannerAnimation == 1 || bannerAnimation == 3)) {
+	if (enabled) {
 		if (scrollView.contentOffset.y < -40 && ![self _didScrollPresentLongLookViewController]) { // original is scrollView.contentOffset.y < -40
 			if (!self.clickPresentationInteractionManager.hasCommittedToPresentation) {
+				self.stopAnimating = YES;
 				[self _presentLongLookForScrollAnimated:YES completion:nil];
 			}
 		}
@@ -438,8 +443,11 @@ static void PreferencesChangedCallback(CFNotificationCenterRef center, void *obs
 		currentCount++;
 		[timer.userInfo setObject:[NSNumber numberWithInt:currentCount] forKey:@"currentCount"];
 
-		if (currentCount >= string.length) {
+		if (currentCount > string.length || self.stopAnimating) {
+			self.stopAnimating = NO;
 			[timer invalidate];
+			self.viewForPreview.secondaryText = string;
+			return;
 		}
 		self.viewForPreview.secondaryText = [string substringToIndex:currentCount];
 	} else {
@@ -470,13 +478,15 @@ static void PreferencesChangedCallback(CFNotificationCenterRef center, void *obs
 - (void)layoutSubviews {
 	%orig;
 	NCNotificationShortLookViewController *controller = (NCNotificationShortLookViewController *)[self _viewControllerForAncestor];
-	if (enabled && [controller.delegate isKindOfClass:%c(SBNotificationBannerDestination)] && location != 2) {
-		if ([[[UIDevice currentDevice] systemVersion] floatValue] < 13.0) {
-			((UIView *)[self valueForKey:@ "_mainOverlayView"]).hidden = YES;
+	if ([controller respondsToSelector:@selector(delegate)]) {
+		if (enabled && [controller.delegate isKindOfClass:%c(SBNotificationBannerDestination)] && location != 2) {
+			if ([[[UIDevice currentDevice] systemVersion] floatValue] < 13.0) {
+				((UIView *)[self valueForKey:@ "_mainOverlayView"]).hidden = YES;
+			}
+			((UIView *)[self valueForKey:@"_grabberView"]).hidden = YES;
+			((UIImageView *)[self valueForKey:@"_shadowView"]).hidden = YES;
+			self.backgroundView.hidden = YES;
 		}
-		((UIView *)[self valueForKey:@"_grabberView"]).hidden = YES;
-		((UIImageView *)[self valueForKey:@"_shadowView"]).hidden = YES;
-		self.backgroundView.hidden = YES;
 	}
 }
 
@@ -557,54 +567,56 @@ static void PreferencesChangedCallback(CFNotificationCenterRef center, void *obs
 	}
 	if (superview) {
 		NCNotificationShortLookViewController *controller = (NCNotificationShortLookViewController *)[superview _viewControllerForAncestor];
-		if (enabled && (location == 0 || ([controller.delegate isKindOfClass:%c(SBNotificationBannerDestination)] && location == 1) || (![controller.delegate isKindOfClass:%c(SBNotificationBannerDestination)] && location == 2))) {
-			superview.otherHeaderView.frame = CGRectMake(2, 4, self.frame.size.width - 4, self.frame.size.height);
-			superview.otherHeaderView.backgroundColor = [UIColor clearColor];
+		if ([controller respondsToSelector:@selector(delegate)]) {
+			if (enabled && (location == 0 || ([controller.delegate isKindOfClass:%c(SBNotificationBannerDestination)] && location == 1) || (![controller.delegate isKindOfClass:%c(SBNotificationBannerDestination)] && location == 2))) {
+				superview.otherHeaderView.frame = CGRectMake(2, 4, self.frame.size.width - 4, self.frame.size.height);
+				superview.otherHeaderView.backgroundColor = [UIColor clearColor];
 
-			superview.otherHeaderView.iconButton.frame = self.iconButtons[0].frame;
-			[superview.otherHeaderView.iconButton setImage:self.iconButtons[0].imageView.image forState:UIControlStateNormal];
+				superview.otherHeaderView.iconButton.frame = self.iconButtons[0].frame;
+				[superview.otherHeaderView.iconButton setImage:self.iconButtons[0].imageView.image forState:UIControlStateNormal];
 
-			superview.otherHeaderView.titleLabel.frame = self.titleLabel.frame;
-			superview.otherHeaderView.titleLabel.font = [self _titleLabelPreferredFont];
+				superview.otherHeaderView.titleLabel.frame = self.titleLabel.frame;
+				superview.otherHeaderView.titleLabel.font = [self _titleLabelPreferredFont];
 
-			// Hide header icon option
-			if (hideIcon) {
-				superview.otherHeaderView.iconButton.hidden = YES;
-				superview.otherHeaderView.titleLabel.frame = CGRectMake(-17, self.titleLabel.frame.origin.y, self.titleLabel.frame.size.width, self.titleLabel.frame.size.height);
+				// Hide header icon option
+				if (hideIcon) {
+					superview.otherHeaderView.iconButton.hidden = YES;
+					superview.otherHeaderView.titleLabel.frame = CGRectMake(-17, self.titleLabel.frame.origin.y, self.titleLabel.frame.size.width, self.titleLabel.frame.size.height);
+				} else {
+					superview.otherHeaderView.iconButton.hidden = NO;
+				}
+
+				// Funky attributed string stuff -- this is necessary because we want the text indent but NOT the color override on the title.
+				NSMutableAttributedString *titleText = [[NSMutableAttributedString alloc] initWithString:self.titleLabel.attributedText.string];
+				NSDictionary *attrs = [self.titleLabel.attributedText attributesAtIndex:0 longestEffectiveRange:nil inRange:NSMakeRange(0, self.titleLabel.attributedText.length)];;
+				if ([attrs objectForKey:@"NSParagraphStyle"]) {
+					[titleText addAttribute:NSParagraphStyleAttributeName value:[attrs objectForKey:@"NSParagraphStyle"] range:NSMakeRange(0, titleText.length)];
+				} else {
+					titleText = [[NSMutableAttributedString alloc] initWithString:attrs.description];
+				}
+				superview.otherHeaderView.titleLabel.attributedText = titleText;
+
+				superview.otherHeaderView.dateLabel.frame = self.dateLabel.frame;
+				superview.otherHeaderView.dateLabel.text = self.dateLabel.text;
+				superview.otherHeaderView.dateLabel.font = [self _dateLabelPreferredFont];
+
+				// Override style fix
+				if (style == 1 || style == 2) {
+					superview.otherHeaderView.titleLabel.layer.filters = nil;
+					superview.otherHeaderView.dateLabel.layer.filters = nil;
+				} else {
+					superview.otherHeaderView.titleLabel.layer.filters = self.titleLabel.layer.filters;
+					superview.otherHeaderView.dateLabel.layer.filters = self.dateLabel.layer.filters;
+				}
+				NCNotificationContentView *contentView = [superview valueForKey:@"_notificationContentView"];
+				[contentView setNeedsLayout];
+
+				superview.otherHeaderView.hidden = NO;
+				self.hidden = YES;
 			} else {
-				superview.otherHeaderView.iconButton.hidden = NO;
+				superview.otherHeaderView.hidden = YES;
+				self.hidden = NO;
 			}
-
-			// Funky attributed string stuff -- this is necessary because we want the text indent but NOT the color override on the title.
-			NSMutableAttributedString *titleText = [[NSMutableAttributedString alloc] initWithString:self.titleLabel.attributedText.string];
-			NSDictionary *attrs = [self.titleLabel.attributedText attributesAtIndex:0 longestEffectiveRange:nil inRange:NSMakeRange(0, self.titleLabel.attributedText.length)];;
-			if ([attrs objectForKey:@"NSParagraphStyle"]) {
-				[titleText addAttribute:NSParagraphStyleAttributeName value:[attrs objectForKey:@"NSParagraphStyle"] range:NSMakeRange(0, titleText.length)];
-			} else {
-				titleText = [[NSMutableAttributedString alloc] initWithString:attrs.description];
-			}
-			superview.otherHeaderView.titleLabel.attributedText = titleText;
-
-			superview.otherHeaderView.dateLabel.frame = self.dateLabel.frame;
-			superview.otherHeaderView.dateLabel.text = self.dateLabel.text;
-			superview.otherHeaderView.dateLabel.font = [self _dateLabelPreferredFont];
-
-			// Override style fix
-			if (style == 1 || style == 2) {
-				superview.otherHeaderView.titleLabel.layer.filters = nil;
-				superview.otherHeaderView.dateLabel.layer.filters = nil;
-			} else {
-				superview.otherHeaderView.titleLabel.layer.filters = self.titleLabel.layer.filters;
-				superview.otherHeaderView.dateLabel.layer.filters = self.dateLabel.layer.filters;
-			}
-			NCNotificationContentView *contentView = [superview valueForKey:@"_notificationContentView"];
-			[contentView setNeedsLayout];
-
-			superview.otherHeaderView.hidden = NO;
-			self.hidden = YES;
-		} else {
-			superview.otherHeaderView.hidden = YES;
-			self.hidden = NO;
 		}
 	}
 }

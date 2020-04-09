@@ -94,10 +94,11 @@
 @property (nonatomic, weak) id delegate;
 @property (nonatomic, strong) NCNotificationShortLookView *viewForPreview;
 @property (nonatomic, strong) NCNotificationRequest *notificationRequest;
-@property (nonatomic,readonly) PLClickPresentationInteractionManager * clickPresentationInteractionManager;                                                   //@synthesize scrollView=_scrollView - In the implementation block
+@property (nonatomic,readonly) PLClickPresentationInteractionManager * clickPresentationInteractionManager;
 @property (getter=_presentedLongLookViewController,nonatomic,readonly) NCNotificationViewController * presentedLongLookViewController; 
 @property (nonatomic, retain) UIImageView *backgroundImageView;
 @property (nonatomic, retain) UIView *backgroundColorView;
+@property (nonatomic, assign) BOOL stopAnimating;
 - (void)_presentLongLookForScrollAnimated:(BOOL)arg1 completion:(/*^block*/id)arg2 ;
 - (BOOL)_didScrollPresentLongLookViewController;
 @end
