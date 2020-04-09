@@ -316,7 +316,7 @@ static void PreferencesChangedCallback(CFNotificationCenterRef center, void *obs
 	if ([self.delegate isKindOfClass:%c(SBNotificationBannerDestination)] && location != 2) {
 		// Hide notification text
 		if (enabled && animateText) {
-			self.viewForPreview.originalSecondaryText = self.viewForPreview.secondaryText;
+			self.viewForPreview.originalSecondaryText = self.viewForPreview.secondaryText ?: @"";
 			NSString *padText = @" ";
 			for (int i = 1; i < self.viewForPreview.secondaryText.length; i++) {
 				if (self.viewForPreview.secondaryText.UTF8String[i] == '\n') {
@@ -452,7 +452,7 @@ static void PreferencesChangedCallback(CFNotificationCenterRef center, void *obs
 %hook NCNotificationShortLookView
 
 %property (nonatomic, retain) UIView *otherHeaderView;
-%property (nonatomic, assign) NSString *originalSecondaryText;
+%property (nonatomic, retain) NSString *originalSecondaryText;
 
 %end
 

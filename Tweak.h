@@ -57,7 +57,7 @@
 @property (nonatomic, retain) NCNotificationContentView *notificationContentView;
 @property (nonatomic, assign) NSString *title;
 @property (nonatomic, assign) NSString *secondaryText;
-@property (nonatomic, assign) NSString *originalSecondaryText;
+@property (nonatomic, retain) NSString *originalSecondaryText;
 @property (nonatomic, assign) unsigned long long maximumNumberOfSecondaryTextLines; 
 - (PLPlatterHeaderContentView *)_headerContentView;
 - (NCNotificationContentView *)_notificationContentView;
