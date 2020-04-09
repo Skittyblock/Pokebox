@@ -30,7 +30,7 @@ static NSMutableArray *viewsToLayout;
 
 // Update notification banner style
 void updateBannerStyle(NCNotificationShortLookViewController *controller) {
-	// ColorBanners support
+	// ColorBanners/ColorMeNotifs support
 	BOOL colorBanners = NO;
 
 	if ([[NSFileManager defaultManager] fileExistsAtPath:@"/Library/MobileSubstrate/DynamicLibraries/ColorBanners3.dylib"]) {
@@ -43,6 +43,10 @@ void updateBannerStyle(NCNotificationShortLookViewController *controller) {
 				break;
 			}
 		}
+	}
+	if (!colorBanners && [[NSFileManager defaultManager] fileExistsAtPath:@"/Library/MobileSubstrate/DynamicLibraries/ColorMeNotifs.dylib"] && controller.viewForPreview.backgroundMaterialView.backgroundColor) {
+		controller.backgroundColorView.backgroundColor = controller.viewForPreview.backgroundMaterialView.backgroundColor;
+		colorBanners = YES;
 	}
 
 	// Banner style
@@ -265,6 +269,11 @@ static void PreferencesChangedCallback(CFNotificationCenterRef center, void *obs
 
 - (void)viewDidLayoutSubviews {
 	%orig;
+
+	// ColorMeNotifs support
+	if ([[NSFileManager defaultManager] fileExistsAtPath:@"/Library/MobileSubstrate/DynamicLibraries/ColorMeNotifs.dylib"] && self.viewForPreview.backgroundMaterialView.backgroundColor) {
+		self.backgroundColorView.backgroundColor = self.viewForPreview.backgroundMaterialView.backgroundColor;
+	}
 
 	// Load background image
 	if (!self.backgroundImageView) {
