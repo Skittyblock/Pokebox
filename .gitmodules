@@ -1,0 +1,3 @@
+[submodule "SkittyPrefs"]
+	path = prefs/SkittyPrefs
+	url = https://github.com/Skittyblock/SkittyPrefs
